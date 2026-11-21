@@ -63,8 +63,8 @@ def tokenize(expr: str) -> list:
         
         if ch in '+-*/()':
             # Handle unary minus (negative numbers)
-            # Unary minus occurs after: start of expression, an operator, or opening parenthesis
-            if ch == '-' and (i == 0 or not tokens or tokens[-1][0] in ['OPERATOR', 'LPAREN']):
+            # Unary minus occurs after: start of expression, an operator, opening parenthesis, or another unary minus
+            if ch == '-' and (i == 0 or not tokens or tokens[-1][0] in ['OPERATOR', 'LPAREN', 'UNARY_MINUS']):
                 # This is a unary minus
                 tokens.append(('UNARY_MINUS', ch))
                 i += 1

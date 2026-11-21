@@ -48,58 +48,163 @@ def validate_operator(op: str) -> str:
     return op
 
 
-def parse_expression(expr: str) -> tuple[float, str, float]:
-    """Parse and validate a full expression string.
+def tokenize(expr: str) -> list:
+    """Convert expression string into tokens (numbers, operators, parentheses)."""
+    tokens = []
+    i = 0
+    expr = expr.strip()
     
-    Supports flexible formats:
-    - "5 + 3" (space-separated)
-    - "5+3" (no spaces)
-    - "5 +3" / "5+ 3" (partial spaces)
-    - "-5 + 3" (negative numbers)
-    - "5.5 * -2.3" (decimals with negatives)
+    while i < len(expr):
+        ch = expr[i]
+        
+        if ch.isspace():
+            i += 1
+            continue
+        
+        if ch in '+-*/()':
+            # Handle unary minus (negative numbers)
+            if ch == '-' and (i == 0 or expr[i-1] in '+-*/('):
+                # This is a unary minus, part of a number
+                j = i + 1
+                # Collect the number after the minus
+                while j < len(expr) and (expr[j].isdigit() or expr[j] == '.'):
+                    j += 1
+                num_str = expr[i:j]
+                tokens.append(('NUMBER', parse_number(num_str)))
+                i = j
+            else:
+                tokens.append(('OPERATOR', ch))
+                i += 1
+        elif ch.isdigit() or ch == '.':
+            j = i
+            while j < len(expr) and (expr[j].isdigit() or expr[j] == '.'):
+                j += 1
+            num_str = expr[i:j]
+            tokens.append(('NUMBER', parse_number(num_str)))
+            i = j
+        else:
+            raise ValueError(f"Geçersiz karakter: '{ch}'")
+    
+    return tokens
+
+
+def evaluate_expression(expr: str) -> float:
+    """Evaluate a full mathematical expression with operator precedence.
+    
+    Supports:
+    - Basic operations: +, -, *, /
+    - Operator precedence: * and / before + and -
+    - Left-to-right associativity
+    - Parentheses for grouping
+    - Negative numbers
+    - Decimals
+    - Flexible spacing
     """
     if not expr or not expr.strip():
         raise ValueError("Boş ifade girilemez.")
     
-    expr = expr.strip()
+    tokens = tokenize(expr)
     
-    # Find operator position (skip leading sign of first number)
-    operators = ['+', '-', '*', '/']
-    op_pos = -1
-    op_char = ''
+    # Shunting Yard algorithm to convert to RPN
+    output = []
+    operators = []
     
-    for i, ch in enumerate(expr):
-        if ch in operators:
-            # Skip if it's the first character (negative sign for first number)
-            if i == 0:
-                continue
-            # Skip if previous char is an operator (e.g., "5*-3" -> '*' at pos 1, '-' at pos 2)
-            if expr[i-1] in operators:
-                continue
-            op_pos = i
-            op_char = ch
-            break
+    precedence = {'+': 1, '-': 1, '*': 2, '/': 2}
     
-    if op_pos == -1:
-        raise ValueError("Geçersiz format. Operatör bulunamadı (+, -, *, /).")
+    for token_type, token_value in tokens:
+        if token_type == 'NUMBER':
+            output.append(token_value)
+        elif token_type == 'OPERATOR':
+            if token_value == '(':
+                operators.append(token_value)
+            elif token_value == ')':
+                while operators and operators[-1] != '(':
+                    output.append(operators.pop())
+                if not operators:
+                    raise ValueError("Eşleşmeyen parantez")
+                operators.pop()  # Remove '('
+            else:
+                while (operators and operators[-1] != '(' and
+                       precedence.get(operators[-1], 0) >= precedence.get(token_value, 0)):
+                    output.append(operators.pop())
+                operators.append(token_value)
     
-    left_str = expr[:op_pos].strip()
-    right_str = expr[op_pos+1:].strip()
+    while operators:
+        if operators[-1] in '()':
+            raise ValueError("Eşleşmeyen parantez")
+        output.append(operators.pop())
     
-    if not left_str or not right_str:
-        raise ValueError("Geçersiz format. Her iki tarafında da sayı olmalı.")
+    # Evaluate RPN
+    stack = []
+    calc = Calculator()
     
-    a = parse_number(left_str)
-    op = validate_operator(op_char)
-    b = parse_number(right_str)
+    for token in output:
+        if isinstance(token, float):
+            stack.append(token)
+        else:
+            if len(stack) < 2:
+                raise ValueError("Geçersiz ifade")
+            b = stack.pop()
+            a = stack.pop()
+            
+            if token == '+':
+                stack.append(calc.add(a, b))
+            elif token == '-':
+                stack.append(calc.subtract(a, b))
+            elif token == '*':
+                stack.append(calc.multiply(a, b))
+            elif token == '/':
+                stack.append(calc.divide(a, b))
     
-    return a, op, b
+    if len(stack) != 1:
+        raise ValueError("Geçersiz ifade")
+    
+    return stack[0]
+
+
+def parse_expression(expr: str) -> tuple[float, str, float]:
+    """Parse and validate a simple binary expression (for backward compatibility).
+    
+    This maintains the old API for tests that expect a tuple return.
+    For full expression evaluation, use evaluate_expression().
+    """
+    # Try to evaluate as full expression first
+    result = evaluate_expression(expr)
+    
+    # For backward compatibility, we still need to return a tuple
+    # This is a simplified parse - just find the first top-level operator
+    tokens = tokenize(expr)
+    
+    # Find first operator at depth 0 (not inside parentheses)
+    depth = 0
+    for i, (token_type, token_value) in enumerate(tokens):
+        if token_type == 'OPERATOR':
+            if token_value == '(':
+                depth += 1
+            elif token_value == ')':
+                depth -= 1
+            elif depth == 0 and token_value in '+-*/':
+                # Found top-level operator
+                left_tokens = tokens[:i]
+                right_tokens = tokens[i+1:]
+                
+                # Evaluate left and right sides
+                left_expr = ' '.join(str(v) if t == 'NUMBER' else v for t, v in left_tokens)
+                right_expr = ' '.join(str(v) if t == 'NUMBER' else v for t, v in right_tokens)
+                
+                a = evaluate_expression(left_expr) if left_expr else 0
+                b = evaluate_expression(right_expr) if right_expr else 0
+                
+                return a, token_value, b
+    
+    # Fallback: single number
+    return result, '+', 0
 
 
 def main():
-    calc = Calculator()
     print("Hesap Makinesi")
     print("İşlemler: +, -, *, /")
+    print("Parantez desteklenir: (5 + 3) * 2")
     print("Çıkmak için 'q' yazın")
 
     while True:
@@ -108,17 +213,7 @@ def main():
             if expr.strip().lower() == 'q':
                 break
 
-            a, op, b = parse_expression(expr)
-
-            if op == '+':
-                result = calc.add(a, b)
-            elif op == '-':
-                result = calc.subtract(a, b)
-            elif op == '*':
-                result = calc.multiply(a, b)
-            elif op == '/':
-                result = calc.divide(a, b)
-
+            result = evaluate_expression(expr)
             print(f"Sonuç: {result}")
 
         except ValueError as e:

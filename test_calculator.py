@@ -1,6 +1,6 @@
 """Tests for calculator module."""
 import pytest
-from calculator import Calculator, parse_number, validate_operator, parse_expression
+from calculator import Calculator, parse_number, validate_operator, parse_expression, evaluate_expression
 
 
 class TestCalculator:
@@ -109,7 +109,7 @@ class TestValidateOperator:
 
 
 class TestParseExpression:
-    """Test cases for parse_expression function."""
+    """Test cases for parse_expression function (backward compatibility)."""
 
     def test_valid_expressions(self):
         # Space-separated (original format)
@@ -179,7 +179,113 @@ class TestParseExpression:
         with pytest.raises(ValueError, match="Sonsuz"):
             parse_expression("inf + 3")
 
-    def test_multiple_operators_error(self):
-        # Should find first valid operator, not fail on multiple
-        assert parse_expression("5+3-2") == (5.0, "+", 3.0)  # First operator wins
-        assert parse_expression("10-5*2") == (10.0, "-", 5.0)  # First operator wins
+    def test_multiple_operators_first_top_level(self):
+        # parse_expression returns first top-level operator for backward compatibility
+        # but the full expression is evaluated correctly by evaluate_expression
+        a, op, b = parse_expression("5+3-2")
+        assert op == "+"
+        assert a == 5.0
+        assert b == 3.0
+        
+        a, op, b = parse_expression("10-5*2")
+        assert op == "-"
+        assert a == 10.0
+        assert b == 5.0
+
+
+class TestEvaluateExpression:
+    """Test cases for evaluate_expression function (full expression evaluation)."""
+
+    def test_basic_operations(self):
+        assert evaluate_expression("5 + 3") == 8.0
+        assert evaluate_expression("10 - 4") == 6.0
+        assert evaluate_expression("6 * 7") == 42.0
+        assert evaluate_expression("20 / 4") == 5.0
+
+    def test_operator_precedence(self):
+        # Multiplication/division before addition/subtraction
+        assert evaluate_expression("5 + 3 * 2") == 11.0  # 5 + (3*2) = 11
+        assert evaluate_expression("10 - 4 / 2") == 8.0  # 10 - (4/2) = 8
+        assert evaluate_expression("3 * 4 + 5") == 17.0  # (3*4) + 5 = 17
+        assert evaluate_expression("20 / 4 - 2") == 3.0  # (20/4) - 2 = 3
+
+    def test_left_to_right_associativity(self):
+        # Same precedence: left to right
+        assert evaluate_expression("10 - 5 - 2") == 3.0  # (10-5)-2 = 3
+        assert evaluate_expression("20 / 4 / 2") == 2.5  # (20/4)/2 = 2.5
+        assert evaluate_expression("5 + 3 + 2") == 10.0  # (5+3)+2 = 10
+        assert evaluate_expression("6 * 7 / 2") == 21.0  # (6*7)/2 = 21
+
+    def test_parentheses(self):
+        assert evaluate_expression("(5 + 3) * 2") == 16.0
+        assert evaluate_expression("10 - (4 / 2)") == 8.0
+        assert evaluate_expression("(3 + 2) * (4 - 1)") == 15.0
+        assert evaluate_expression("((2 + 3) * 4)") == 20.0
+        assert evaluate_expression("5 * (3 + 2)") == 25.0
+
+    def test_negative_numbers(self):
+        assert evaluate_expression("-5 + 3") == -2.0
+        assert evaluate_expression("5 + -3") == 2.0
+        assert evaluate_expression("-5 * -2") == 10.0
+        assert evaluate_expression("5 * -2") == -10.0
+        assert evaluate_expression("-10 / -2") == 5.0
+        assert evaluate_expression("(-5) + 3") == -2.0
+        assert evaluate_expression("5 * (-2 + 1)") == -5.0
+
+    def test_decimals(self):
+        assert evaluate_expression("2.5 + 1.5") == 4.0
+        assert evaluate_expression("3.14 * 2") == 6.28
+        assert evaluate_expression("10 / 4") == 2.5
+        assert evaluate_expression("0.1 + 0.2") == 0.3
+
+    def test_flexible_spacing(self):
+        assert evaluate_expression("5+3") == 8.0
+        assert evaluate_expression("5 +3") == 8.0
+        assert evaluate_expression("5+ 3") == 8.0
+        assert evaluate_expression("  5  +  3  ") == 8.0
+        assert evaluate_expression("(5+3)*2") == 16.0
+
+    def test_complex_expressions(self):
+        assert evaluate_expression("2 + 3 * 4 - 5 / 2") == 11.5  # 2 + 12 - 2.5 = 11.5
+        assert evaluate_expression("(2 + 3) * (4 - 1) / 2") == 7.5
+        assert evaluate_expression("10 - 2 * 3 + 4 / 2") == 6.0  # 10 - 6 + 2 = 6
+
+    def test_empty_expression(self):
+        with pytest.raises(ValueError, match="Boş ifade"):
+            evaluate_expression("")
+        with pytest.raises(ValueError, match="Boş ifade"):
+            evaluate_expression("   ")
+
+    def test_invalid_format(self):
+        with pytest.raises(ValueError, match="Geçersiz karakter"):
+            evaluate_expression("5 % 3")
+        with pytest.raises(ValueError, match="Geçersiz karakter"):
+            evaluate_expression("5 ^ 3")
+        with pytest.raises(ValueError, match="Eşleşmeyen parantez"):
+            evaluate_expression("(5 + 3")
+        with pytest.raises(ValueError, match="Eşleşmeyen parantez"):
+            evaluate_expression("5 + 3)")
+        with pytest.raises(ValueError, match="Eşleşmeyen parantez"):
+            evaluate_expression(")5 + 3(")
+
+    def test_invalid_number(self):
+        with pytest.raises(ValueError, match="Geçersiz sayı formatı"):
+            evaluate_expression("abc + 3")
+        with pytest.raises(ValueError, match="Geçersiz sayı formatı"):
+            evaluate_expression("5 + xyz")
+        with pytest.raises(ValueError, match="Geçersiz sayı formatı"):
+            evaluate_expression("5.2.3 + 1")
+
+    def test_nan_rejected(self):
+        with pytest.raises(ValueError, match="NaN"):
+            evaluate_expression("nan + 3")
+
+    def test_infinity_rejected(self):
+        with pytest.raises(ValueError, match="Sonsuz"):
+            evaluate_expression("inf + 3")
+        with pytest.raises(ValueError, match="Sonsuz"):
+            evaluate_expression("5 / 0")  # Division by zero gives infinity
+
+    def test_divide_by_zero(self):
+        with pytest.raises(ValueError, match="Cannot divide by zero"):
+            evaluate_expression("5 / 0")

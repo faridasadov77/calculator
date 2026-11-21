@@ -63,7 +63,7 @@ def tokenize(expr: str) -> list:
         
         if ch in '+-*/()':
             # Handle unary minus (negative numbers)
-            if ch == '-' and (i == 0 or not tokens or tokens[-1][1] in '+-*/()'):
+            if ch == '-' and (i == 0 or not tokens or tokens[-1][0] in ['OPERATOR', 'LPAREN']):
                 # This is a unary minus, part of a number
                 j = i + 1
                 # Skip spaces after unary minus
@@ -72,9 +72,17 @@ def tokenize(expr: str) -> list:
                 # Collect the number after the minus
                 while j < len(expr) and (expr[j].isdigit() or expr[j] == '.'):
                     j += 1
-                num_str = expr[i:j]
-                tokens.append(('NUMBER', parse_number(num_str)))
-                i = j
+                
+                # If we found digits, parse as number
+                if j > i + 1:  # We have at least a digit or decimal point
+                    num_str = expr[i:j]
+                    tokens.append(('NUMBER', parse_number(num_str)))
+                    i = j
+                else:
+                    # This is a unary minus followed by parenthesis or operator
+                    # Treat it as a separate unary operator
+                    tokens.append(('UNARY_MINUS', ch))
+                    i += 1
             else:
                 tokens.append(('OPERATOR', ch))
                 i += 1
@@ -117,6 +125,9 @@ def evaluate_expression(expr: str) -> float:
     for token_type, token_value in tokens:
         if token_type == 'NUMBER':
             output.append(token_value)
+        elif token_type == 'UNARY_MINUS':
+            # Unary minus has higher precedence than other operators
+            operators.append('u-')  # Use 'u-' to distinguish from binary '-'
         elif token_type == 'OPERATOR':
             if token_value == '(':
                 operators.append(token_value)
@@ -127,7 +138,7 @@ def evaluate_expression(expr: str) -> float:
                     raise ValueError("Eşleşmeyen parantez")
                 operators.pop()  # Remove '('
             else:
-                while (operators and operators[-1] != '(' and
+                while (operators and operators[-1] != '(' and operators[-1] != 'u-' and
                        precedence.get(operators[-1], 0) >= precedence.get(token_value, 0)):
                     output.append(operators.pop())
                 operators.append(token_value)

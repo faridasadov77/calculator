@@ -236,7 +236,7 @@ class TestEvaluateExpression:
         assert evaluate_expression("2.5 + 1.5") == 4.0
         assert evaluate_expression("3.14 * 2") == 6.28
         assert evaluate_expression("10 / 4") == 2.5
-        assert evaluate_expression("0.1 + 0.2") == 0.3
+        assert evaluate_expression("0.1 + 0.2") == pytest.approx(0.3)
 
     def test_flexible_spacing(self):
         assert evaluate_expression("5+3") == 8.0

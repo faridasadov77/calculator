@@ -289,3 +289,68 @@ class TestEvaluateExpression:
     def test_divide_by_zero(self):
         with pytest.raises(ValueError, match="Cannot divide by zero"):
             evaluate_expression("5 / 0")
+
+    def test_exponentiation(self):
+        assert evaluate_expression("2 ** 3") == 8.0
+        assert evaluate_expression("5 ** 2") == 25.0
+        assert evaluate_expression("2 ** 0.5") == pytest.approx(1.41421356)
+        assert evaluate_expression("10 ** -1") == 0.1
+        assert evaluate_expression("(-2) ** 3") == -8.0
+
+    def test_exponentiation_precedence(self):
+        # ** has higher precedence than * and /
+        assert evaluate_expression("2 * 3 ** 2") == 18.0  # 2 * (3**2) = 18
+        assert evaluate_expression("2 ** 3 * 4") == 32.0  # (2**3) * 4 = 32
+        assert evaluate_expression("2 + 3 ** 2") == 11.0  # 2 + (3**2) = 11
+        assert evaluate_expression("2 ** 3 ** 2") == 512.0  # Right-associative: 2 ** (3**2) = 2**9 = 512
+
+    def test_sqrt(self):
+        assert evaluate_expression("sqrt(25)") == 5.0
+        assert evaluate_expression("sqrt(2)") == pytest.approx(1.41421356)
+        assert evaluate_expression("sqrt(0)") == 0.0
+        assert evaluate_expression("sqrt(1)") == 1.0
+
+    def test_sqrt_negative(self):
+        with pytest.raises(ValueError, match="Karekök negatif"):
+            evaluate_expression("sqrt(-1)")
+        with pytest.raises(ValueError, match="Karekök negatif"):
+            evaluate_expression("sqrt(-25)")
+
+    def test_trig_functions(self):
+        assert evaluate_expression("sin(0)") == 0.0
+        assert evaluate_expression("cos(0)") == 1.0
+        assert evaluate_expression("tan(0)") == 0.0
+        assert evaluate_expression("sin(pi/2)") == pytest.approx(1.0)
+        assert evaluate_expression("cos(pi)") == pytest.approx(-1.0)
+
+    def test_log_functions(self):
+        assert evaluate_expression("log(100)") == 2.0
+        assert evaluate_expression("log(10)") == 1.0
+        assert evaluate_expression("log(1)") == 0.0
+        assert evaluate_expression("ln(e)") == pytest.approx(1.0)
+        assert evaluate_expression("ln(1)") == 0.0
+        assert evaluate_expression("ln(e**2)") == pytest.approx(2.0)
+
+    def test_log_invalid(self):
+        with pytest.raises(ValueError, match="Logaritma"):
+            evaluate_expression("log(0)")
+        with pytest.raises(ValueError, match="Logaritma"):
+            evaluate_expression("log(-1)")
+        with pytest.raises(ValueError, match="Doğal logaritma"):
+            evaluate_expression("ln(0)")
+        with pytest.raises(ValueError, match="Doğal logaritma"):
+            evaluate_expression("ln(-1)")
+
+    def test_constants(self):
+        assert evaluate_expression("pi") == pytest.approx(math.pi)
+        assert evaluate_expression("e") == pytest.approx(math.e)
+        assert evaluate_expression("2 * pi") == pytest.approx(2 * math.pi)
+        assert evaluate_expression("e ** 2") == pytest.approx(math.e ** 2)
+
+    def test_complex_expressions_with_new_features(self):
+        assert evaluate_expression("sqrt(25) + 3 * 2") == 11.0
+        assert evaluate_expression("(5 + 3) * 2 ** 2") == 32.0
+        assert evaluate_expression("sin(pi/2) + cos(0)") == 2.0
+        assert evaluate_expression("log(100) + ln(e)") == 3.0
+        assert evaluate_expression("sqrt(2 ** 4)") == 4.0
+        assert evaluate_expression("2 ** 3 ** 2") == 512.0  # Right associative

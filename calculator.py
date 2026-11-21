@@ -49,7 +49,7 @@ def validate_operator(op: str) -> str:
 
 
 def tokenize(expr: str) -> list:
-    """Convert expression string into tokens (numbers, operators, parentheses)."""
+    """Convert expression string into tokens (numbers, operators, parentheses, functions)."""
     tokens = []
     i = 0
     expr = expr.strip()
@@ -76,12 +76,29 @@ def tokenize(expr: str) -> list:
                 else:
                     tokens.append(('OPERATOR', ch))
                 i += 1
+        elif ch == '*' and i + 1 < len(expr) and expr[i + 1] == '*':
+            # Exponentiation operator **
+            tokens.append(('OPERATOR', '**'))
+            i += 2
         elif ch.isdigit() or ch == '.':
             j = i
             while j < len(expr) and (expr[j].isdigit() or expr[j] == '.'):
                 j += 1
             num_str = expr[i:j]
             tokens.append(('NUMBER', parse_number(num_str)))
+            i = j
+        elif ch.isalpha():
+            # Functions and constants
+            j = i
+            while j < len(expr) and expr[j].isalpha():
+                j += 1
+            word = expr[i:j].lower()
+            if word in ('sqrt', 'sin', 'cos', 'tan', 'log', 'ln'):
+                tokens.append(('FUNCTION', word))
+            elif word in ('pi', 'e'):
+                tokens.append(('CONSTANT', word))
+            else:
+                raise ValueError(f"Bilinmeyen fonksiyon veya sabit: '{word}'")
             i = j
         else:
             raise ValueError(f"Geçersiz karakter: '{ch}'")
@@ -110,11 +127,16 @@ def evaluate_expression(expr: str) -> float:
     output = []
     operators = []
     
-    precedence = {'+': 1, '-': 1, '*': 2, '/': 2, 'u-': 3}  # Unary minus has highest precedence
+    precedence = {'+': 1, '-': 1, '*': 2, '/': 2, '**': 3, 'u-': 4}  # ** has higher precedence than * and /
     
     for token_type, token_value in tokens:
         if token_type == 'NUMBER':
             output.append(token_value)
+        elif token_type == 'CONSTANT':
+            if token_value == 'pi':
+                output.append(math.pi)
+            elif token_value == 'e':
+                output.append(math.e)
         elif token_type == 'UNARY_MINUS':
             # Unary minus has higher precedence than other operators
             operators.append('u-')  # Use 'u-' to distinguish from binary '-'
@@ -126,6 +148,11 @@ def evaluate_expression(expr: str) -> float:
             if not operators:
                 raise ValueError("Eşleşmeyen parantez")
             operators.pop()  # Remove '('
+            # If there's a function on the stack, apply it
+            if operators and operators[-1] in ('sqrt', 'sin', 'cos', 'tan', 'log', 'ln'):
+                output.append(operators.pop())
+        elif token_type == 'FUNCTION':
+            operators.append(token_value)
         elif token_type == 'OPERATOR':
             while (operators and operators[-1] != '(' and 
                    precedence.get(operators[-1], 0) >= precedence.get(token_value, 0)):
@@ -151,6 +178,29 @@ def evaluate_expression(expr: str) -> float:
                     raise ValueError("Geçersiz ifade")
                 a = stack.pop()
                 stack.append(-a)
+            elif token in ('sqrt', 'sin', 'cos', 'tan', 'log', 'ln'):
+                # Functions - one operand
+                if len(stack) < 1:
+                    raise ValueError("Geçersiz ifade")
+                a = stack.pop()
+                if token == 'sqrt':
+                    if a < 0:
+                        raise ValueError("Karekök negatif sayı için tanımsızdır")
+                    stack.append(math.sqrt(a))
+                elif token == 'sin':
+                    stack.append(math.sin(a))
+                elif token == 'cos':
+                    stack.append(math.cos(a))
+                elif token == 'tan':
+                    stack.append(math.tan(a))
+                elif token == 'log':
+                    if a <= 0:
+                        raise ValueError("Logaritma sıfır veya negatif için tanımsızdır")
+                    stack.append(math.log10(a))
+                elif token == 'ln':
+                    if a <= 0:
+                        raise ValueError("Doğal logaritma sıfır veya negatif için tanımsızdır")
+                    stack.append(math.log(a))
             else:
                 # Binary operators - need two operands
                 if len(stack) < 2:
@@ -166,6 +216,8 @@ def evaluate_expression(expr: str) -> float:
                     stack.append(calc.multiply(a, b))
                 elif token == '/':
                     stack.append(calc.divide(a, b))
+                elif token == '**':
+                    stack.append(a ** b)
     
     if len(stack) != 1:
         raise ValueError("Geçersiz ifade")
@@ -213,8 +265,11 @@ def parse_expression(expr: str) -> tuple[float, str, float]:
 
 def main():
     print("Hesap Makinesi")
-    print("İşlemler: +, -, *, /")
+    print("İşlemler: +, -, *, /, ** (üs alma)")
+    print("Fonksiyonlar: sqrt, sin, cos, tan, log, ln")
+    print("Sabitler: pi, e")
     print("Parantez desteklenir: (5 + 3) * 2")
+    print("Örnekler: 5 + 3 * 2, (5 + 3) * 2, sqrt(25), 2 ** 3, sin(pi/2)")
     print("Çıkmak için 'q' yazın")
 
     while True:

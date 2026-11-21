@@ -63,9 +63,12 @@ def tokenize(expr: str) -> list:
         
         if ch in '+-*/()':
             # Handle unary minus (negative numbers)
-            if ch == '-' and (i == 0 or expr[i-1] in '+-*/('):
+            if ch == '-' and (i == 0 or not tokens or tokens[-1][1] in '+-*/()'):
                 # This is a unary minus, part of a number
                 j = i + 1
+                # Skip spaces after unary minus
+                while j < len(expr) and expr[j].isspace():
+                    j += 1
                 # Collect the number after the minus
                 while j < len(expr) and (expr[j].isdigit() or expr[j] == '.'):
                     j += 1

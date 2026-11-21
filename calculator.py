@@ -49,18 +49,49 @@ def validate_operator(op: str) -> str:
 
 
 def parse_expression(expr: str) -> tuple[float, str, float]:
-    """Parse and validate expression string."""
+    """Parse and validate a full expression string.
+    
+    Supports flexible formats:
+    - "5 + 3" (space-separated)
+    - "5+3" (no spaces)
+    - "5 +3" / "5+ 3" (partial spaces)
+    - "-5 + 3" (negative numbers)
+    - "5.5 * -2.3" (decimals with negatives)
+    """
+    if not expr or not expr.strip():
+        raise ValueError("Boş ifade girilemez.")
+    
     expr = expr.strip()
-    if not expr:
-        raise ValueError("Boş ifade")
     
-    parts = expr.split()
-    if len(parts) != 3:
-        raise ValueError("Format: sayı operatör sayı (örn: 5 + 3)")
+    # Find operator position (skip leading sign of first number)
+    operators = ['+', '-', '*', '/']
+    op_pos = -1
+    op_char = ''
     
-    a = parse_number(parts[0])
-    op = validate_operator(parts[1])
-    b = parse_number(parts[2])
+    for i, ch in enumerate(expr):
+        if ch in operators:
+            # Skip if it's the first character (negative sign for first number)
+            if i == 0:
+                continue
+            # Skip if previous char is an operator (e.g., "5*-3" -> '*' at pos 1, '-' at pos 2)
+            if expr[i-1] in operators:
+                continue
+            op_pos = i
+            op_char = ch
+            break
+    
+    if op_pos == -1:
+        raise ValueError("Geçersiz format. Operatör bulunamadı (+, -, *, /).")
+    
+    left_str = expr[:op_pos].strip()
+    right_str = expr[op_pos+1:].strip()
+    
+    if not left_str or not right_str:
+        raise ValueError("Geçersiz format. Her iki tarafında da sayı olmalı.")
+    
+    a = parse_number(left_str)
+    op = validate_operator(op_char)
+    b = parse_number(right_str)
     
     return a, op, b
 

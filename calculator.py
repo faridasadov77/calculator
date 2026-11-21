@@ -64,25 +64,9 @@ def tokenize(expr: str) -> list:
         if ch in '+-*/()':
             # Handle unary minus (negative numbers)
             if ch == '-' and (i == 0 or not tokens or tokens[-1][0] in ['OPERATOR', 'LPAREN']):
-                # This is a unary minus, part of a number
-                j = i + 1
-                # Skip spaces after unary minus
-                while j < len(expr) and expr[j].isspace():
-                    j += 1
-                # Collect the number after the minus
-                while j < len(expr) and (expr[j].isdigit() or expr[j] == '.'):
-                    j += 1
-                
-                # If we found digits, parse as number
-                if j > i + 1:  # We have at least a digit or decimal point
-                    num_str = expr[i:j]
-                    tokens.append(('NUMBER', parse_number(num_str)))
-                    i = j
-                else:
-                    # This is a unary minus followed by parenthesis or operator
-                    # Treat it as a separate unary operator
-                    tokens.append(('UNARY_MINUS', ch))
-                    i += 1
+                # This is a unary minus
+                tokens.append(('UNARY_MINUS', ch))
+                i += 1
             else:
                 tokens.append(('OPERATOR', ch))
                 i += 1
@@ -120,7 +104,7 @@ def evaluate_expression(expr: str) -> float:
     output = []
     operators = []
     
-    precedence = {'+': 1, '-': 1, '*': 2, '/': 2}
+    precedence = {'+': 1, '-': 1, '*': 2, '/': 2, 'u-': 3}  # Unary minus has highest precedence
     
     for token_type, token_value in tokens:
         if token_type == 'NUMBER':
@@ -138,7 +122,7 @@ def evaluate_expression(expr: str) -> float:
                     raise ValueError("Eşleşmeyen parantez")
                 operators.pop()  # Remove '('
             else:
-                while (operators and operators[-1] != '(' and operators[-1] != 'u-' and
+                while (operators and operators[-1] != '(' and 
                        precedence.get(operators[-1], 0) >= precedence.get(token_value, 0)):
                     output.append(operators.pop())
                 operators.append(token_value)
@@ -156,19 +140,27 @@ def evaluate_expression(expr: str) -> float:
         if isinstance(token, float):
             stack.append(token)
         else:
-            if len(stack) < 2:
-                raise ValueError("Geçersiz ifade")
-            b = stack.pop()
-            a = stack.pop()
-            
-            if token == '+':
-                stack.append(calc.add(a, b))
-            elif token == '-':
-                stack.append(calc.subtract(a, b))
-            elif token == '*':
-                stack.append(calc.multiply(a, b))
-            elif token == '/':
-                stack.append(calc.divide(a, b))
+            if token == 'u-':
+                # Unary minus - only one operand needed
+                if len(stack) < 1:
+                    raise ValueError("Geçersiz ifade")
+                a = stack.pop()
+                stack.append(-a)
+            else:
+                # Binary operators - need two operands
+                if len(stack) < 2:
+                    raise ValueError("Geçersiz ifade")
+                b = stack.pop()
+                a = stack.pop()
+                
+                if token == '+':
+                    stack.append(calc.add(a, b))
+                elif token == '-':
+                    stack.append(calc.subtract(a, b))
+                elif token == '*':
+                    stack.append(calc.multiply(a, b))
+                elif token == '/':
+                    stack.append(calc.divide(a, b))
     
     if len(stack) != 1:
         raise ValueError("Geçersiz ifade")

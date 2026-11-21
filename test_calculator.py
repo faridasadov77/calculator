@@ -185,12 +185,12 @@ class TestParseExpression:
         a, op, b = parse_expression("5+3-2")
         assert op == "+"
         assert a == 5.0
-        assert b == 3.0
+        assert b == 1.0  # right side "3-2" is evaluated fully
         
         a, op, b = parse_expression("10-5*2")
         assert op == "-"
         assert a == 10.0
-        assert b == 5.0
+        assert b == 10.0  # right side "5*2" is evaluated fully
 
 
 class TestEvaluateExpression:

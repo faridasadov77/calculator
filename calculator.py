@@ -61,7 +61,11 @@ def tokenize(expr: str) -> list:
             i += 1
             continue
         
-        if ch in '+-*/()':
+        if ch == '*' and i + 1 < len(expr) and expr[i + 1] == '*':
+            # Exponentiation operator ** (must be checked before single-char operators)
+            tokens.append(('OPERATOR', '**'))
+            i += 2
+        elif ch in '+-*/()':
             # Handle unary minus (negative numbers)
             # Unary minus occurs after: start of expression, an operator, opening parenthesis, or another unary minus
             if ch == '-' and (i == 0 or not tokens or tokens[-1][0] in ['OPERATOR', 'LPAREN', 'UNARY_MINUS']):
@@ -76,10 +80,6 @@ def tokenize(expr: str) -> list:
                 else:
                     tokens.append(('OPERATOR', ch))
                 i += 1
-        elif ch == '*' and i + 1 < len(expr) and expr[i + 1] == '*':
-            # Exponentiation operator **
-            tokens.append(('OPERATOR', '**'))
-            i += 2
         elif ch.isdigit() or ch == '.':
             j = i
             while j < len(expr) and (expr[j].isdigit() or expr[j] == '.'):

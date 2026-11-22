@@ -154,8 +154,12 @@ def evaluate_expression(expr: str) -> float:
         elif token_type == 'FUNCTION':
             operators.append(token_value)
         elif token_type == 'OPERATOR':
-            while (operators and operators[-1] != '(' and 
-                   precedence.get(operators[-1], 0) >= precedence.get(token_value, 0)):
+            # '**' is right-associative: pop only strictly higher precedence.
+            # Other operators are left-associative: also pop equal precedence.
+            while (operators and operators[-1] != '(' and
+                   (precedence.get(operators[-1], 0) > precedence.get(token_value, 0) or
+                    (token_value != '**' and
+                     precedence.get(operators[-1], 0) == precedence.get(token_value, 0)))):
                 output.append(operators.pop())
             operators.append(token_value)
     

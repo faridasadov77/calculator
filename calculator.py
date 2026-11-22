@@ -135,6 +135,65 @@ def tokenize(expr: str) -> list:
     return tokens
 
 
+def _validate_tokens(tokens: list) -> None:
+    """Validate token sequence to ensure proper alternation between operands and operators.
+    
+    Functions must be called with parentheses (e.g., sqrt(25) not sqrt 25).
+    Operands and operators must alternate properly.
+    """
+    i = 0
+    while i < len(tokens):
+        token_type, token_value = tokens[i]
+        
+        if token_type == 'FUNCTION':
+            # Functions must be followed by '(' (handled in tokenize)
+            # But we still need to check that they're not used without parentheses
+            raise ValueError(f"'{token_value}' fonksiyonundan sonra '(' gerekir")
+        
+        i += 1
+    
+    # Check that operands and operators alternate properly
+    for i in range(len(tokens)):
+        token_type, token_value = tokens[i]
+        
+        if i == 0:
+            # First token can be: NUMBER, CONSTANT, UNARY_MINUS, LPAREN, FUNCTION
+            if token_type not in ['NUMBER', 'CONSTANT', 'UNARY_MINUS', 'LPAREN', 'FUNCTION']:
+                raise ValueError("Geçersiz ifade")
+        else:
+            prev_type, prev_value = tokens[i-1]
+            
+            # Current token can be: NUMBER, CONSTANT, UNARY_MINUS, LPAREN, FUNCTION, OPERATOR, RPAREN
+            if token_type == 'NUMBER':
+                # Previous must be: OPERATOR, LPAREN, UNARY_MINUS
+                if prev_type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS']:
+                    raise ValueError("Geçersiz ifade")
+            elif token_type == 'CONSTANT':
+                # Previous must be: OPERATOR, LPAREN, UNARY_MINUS
+                if prev_type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS']:
+                    raise ValueError("Geçersiz ifade")
+            elif token_type == 'UNARY_MINUS':
+                # Previous must be: OPERATOR, LPAREN, UNARY_MINUS, or start
+                if prev_type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS'] and i > 0:
+                    raise ValueError("Geçersiz ifade")
+            elif token_type == 'LPAREN':
+                # Previous must be: OPERATOR, LPAREN, UNARY_MINUS, FUNCTION
+                if prev_type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS', 'FUNCTION']:
+                    raise ValueError("Geçersiz ifade")
+            elif token_type == 'FUNCTION':
+                # Previous must be: OPERATOR, LPAREN, UNARY_MINUS
+                if prev_type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS']:
+                    raise ValueError("Geçersiz ifade")
+            elif token_type == 'OPERATOR':
+                # Previous must be: NUMBER, CONSTANT, RPAREN
+                if prev_type not in ['NUMBER', 'CONSTANT', 'RPAREN']:
+                    raise ValueError("Geçersiz ifade")
+            elif token_type == 'RPAREN':
+                # Previous must be: NUMBER, CONSTANT, RPAREN
+                if prev_type not in ['NUMBER', 'CONSTANT', 'RPAREN']:
+                    raise ValueError("Geçersiz ifade")
+
+
 def evaluate_expression(expr: str) -> float:
     """Evaluate a full mathematical expression with operator precedence.
     
@@ -146,11 +205,15 @@ def evaluate_expression(expr: str) -> float:
     - Negative numbers
     - Decimals
     - Flexible spacing
+    - Functions must be called with parentheses (e.g., sqrt(25))
     """
     if not expr or not expr.strip():
         raise ValueError("Boş ifade girilemez.")
     
     tokens = tokenize(expr)
+    
+    # Validate token sequence for strict syntax
+    _validate_tokens(tokens)
     
     # Shunting Yard algorithm to convert to RPN
     output = []

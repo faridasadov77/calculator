@@ -48,6 +48,25 @@ def validate_operator(op: str) -> str:
     return op
 
 
+def _checked(value: float) -> float:
+    """Reject results that overflowed to inf (e.g. 10 ** 308 * 10) or became NaN."""
+    if not math.isfinite(value):
+        raise ValueError("Sonuç çok büyük (taşma)")
+    return value
+
+
+def _check_power(a: float, b: float) -> None:
+    """Raise ValueError if a ** b would overflow, be complex, or divide by zero."""
+    try:
+        result = a ** b
+    except OverflowError:
+        raise ValueError("Sonuç çok büyük (taşma)") from None
+    except ZeroDivisionError:
+        raise ValueError("Sıfır negatif bir üsse yükseltilemez") from None
+    if isinstance(result, complex):
+        raise ValueError("Negatif sayının kesirli üssü tanımsızdır")
+
+
 def tokenize(expr: str) -> list:
     """Convert expression string into tokens (numbers, operators, parentheses, functions)."""
     tokens = []
@@ -84,6 +103,16 @@ def tokenize(expr: str) -> list:
             j = i
             while j < len(expr) and (expr[j].isdigit() or expr[j] == '.'):
                 j += 1
+            # Optional exponent (1e5, 2.5E-3). Only consumed when digits follow,
+            # so "2 * e" and "2e" keep treating 'e' as Euler's constant.
+            if j < len(expr) and expr[j] in 'eE':
+                k = j + 1
+                if k < len(expr) and expr[k] in '+-':
+                    k += 1
+                if k < len(expr) and expr[k].isdigit():
+                    while k < len(expr) and expr[k].isdigit():
+                        k += 1
+                    j = k
             num_str = expr[i:j]
             tokens.append(('NUMBER', parse_number(num_str)))
             i = j
@@ -213,14 +242,15 @@ def evaluate_expression(expr: str) -> float:
                 a = stack.pop()
                 
                 if token == '+':
-                    stack.append(calc.add(a, b))
+                    stack.append(_checked(calc.add(a, b)))
                 elif token == '-':
-                    stack.append(calc.subtract(a, b))
+                    stack.append(_checked(calc.subtract(a, b)))
                 elif token == '*':
-                    stack.append(calc.multiply(a, b))
+                    stack.append(_checked(calc.multiply(a, b)))
                 elif token == '/':
-                    stack.append(calc.divide(a, b))
+                    stack.append(_checked(calc.divide(a, b)))
                 elif token == '**':
+                    _check_power(a, b)
                     stack.append(a ** b)
     
     if len(stack) != 1:
@@ -285,7 +315,7 @@ def main():
             result = evaluate_expression(expr)
             print(f"Sonuç: {result}")
 
-        except ValueError as e:
+        except (ValueError, ArithmeticError) as e:
             print(f"Hata: {e}")
         except KeyboardInterrupt:
             print("\nÇıkılıyor...")

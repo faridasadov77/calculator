@@ -1,4 +1,6 @@
 """Tests for calculator module."""
+import math
+
 import pytest
 from calculator import Calculator, parse_number, validate_operator, parse_expression, evaluate_expression
 
@@ -146,38 +148,42 @@ class TestParseExpression:
             parse_expression("   ")
 
     def test_invalid_format(self):
-        with pytest.raises(ValueError, match="Operatör bulunamadı"):
-            parse_expression("5")
-        with pytest.raises(ValueError, match="Her iki tarafında da sayı"):
+        # A lone number has no operator: the legacy fallback returns (value, '+', 0)
+        assert parse_expression("5") == (5.0, "+", 0)
+        with pytest.raises(ValueError, match="Geçersiz ifade"):
             parse_expression("5+")
-        with pytest.raises(ValueError, match="Her iki tarafında da sayı"):
+        with pytest.raises(ValueError, match="Geçersiz ifade"):
             parse_expression("+3")
-        with pytest.raises(ValueError, match="Operatör bulunamadı"):
+        with pytest.raises(ValueError, match="Geçersiz ifade"):
             parse_expression("5 3")
 
     def test_invalid_number_in_expression(self):
-        with pytest.raises(ValueError, match="Geçersiz sayı formatı"):
+        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
             parse_expression("abc + 3")
-        with pytest.raises(ValueError, match="Geçersiz sayı formatı"):
+        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
             parse_expression("5 + xyz")
         with pytest.raises(ValueError, match="Geçersiz sayı formatı"):
             parse_expression("5.2.3 + 1")
 
     def test_invalid_operator_in_expression(self):
-        with pytest.raises(ValueError, match="Geçersiz operatör"):
+        with pytest.raises(ValueError, match="Geçersiz karakter"):
             parse_expression("5 % 3")
-        with pytest.raises(ValueError, match="Geçersiz operatör"):
+        with pytest.raises(ValueError, match="Geçersiz karakter"):
             parse_expression("5 ^ 3")
-        with pytest.raises(ValueError, match="Geçersiz operatör"):
+        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
             parse_expression("5 x 3")
 
     def test_nan_in_expression(self):
-        with pytest.raises(ValueError, match="NaN"):
+        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
             parse_expression("nan + 3")
 
     def test_infinity_in_expression(self):
-        with pytest.raises(ValueError, match="Sonsuz"):
+        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
             parse_expression("inf + 3")
+
+    def test_small_numbers_round_trip(self):
+        # str(1e-05) == '1e-05' must survive being re-tokenized
+        assert parse_expression("0.00001 + 1") == (1e-05, "+", 1.0)
 
     def test_multiple_operators_first_top_level(self):
         # parse_expression returns first top-level operator for backward compatibility
@@ -269,26 +275,48 @@ class TestEvaluateExpression:
             evaluate_expression(")5 + 3(")
 
     def test_invalid_number(self):
-        with pytest.raises(ValueError, match="Geçersiz sayı formatı"):
+        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
             evaluate_expression("abc + 3")
-        with pytest.raises(ValueError, match="Geçersiz sayı formatı"):
+        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
             evaluate_expression("5 + xyz")
         with pytest.raises(ValueError, match="Geçersiz sayı formatı"):
             evaluate_expression("5.2.3 + 1")
 
     def test_nan_rejected(self):
-        with pytest.raises(ValueError, match="NaN"):
+        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
             evaluate_expression("nan + 3")
 
     def test_infinity_rejected(self):
-        with pytest.raises(ValueError, match="Sonsuz"):
+        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
             evaluate_expression("inf + 3")
+        # A literal too large for a float overflows to inf and is rejected
         with pytest.raises(ValueError, match="Sonsuz"):
-            evaluate_expression("5 / 0")  # Division by zero gives infinity
+            evaluate_expression("1" + "0" * 400)
 
     def test_divide_by_zero(self):
         with pytest.raises(ValueError, match="Cannot divide by zero"):
             evaluate_expression("5 / 0")
+
+    def test_overflow_raises_value_error(self):
+        with pytest.raises(ValueError, match="çok büyük"):
+            evaluate_expression("10 ** 1000")
+        with pytest.raises(ValueError, match="çok büyük"):
+            evaluate_expression("10 ** 308 * 10")
+
+    def test_zero_to_negative_power(self):
+        with pytest.raises(ValueError, match="Sıfır negatif"):
+            evaluate_expression("0 ** -1")
+
+    def test_negative_base_fractional_exponent(self):
+        with pytest.raises(ValueError, match="kesirli üssü"):
+            evaluate_expression("(-8) ** 0.5")
+
+    def test_scientific_notation(self):
+        assert evaluate_expression("1e5") == 100000.0
+        assert evaluate_expression("2.5e-3 + 1") == pytest.approx(1.0025)
+        assert evaluate_expression("2E+2") == 200.0
+        # 'e' without digits after it is still Euler's constant
+        assert evaluate_expression("2 * e") == pytest.approx(2 * math.e)
 
     def test_exponentiation(self):
         assert evaluate_expression("2 ** 3") == 8.0

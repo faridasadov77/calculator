@@ -141,17 +141,24 @@ def _validate_tokens(tokens: list) -> None:
     Functions must be called with parentheses (e.g., sqrt(25) not sqrt 25).
     Operands and operators must alternate properly.
     """
-    i = 0
-    while i < len(tokens):
-        token_type, token_value = tokens[i]
-        
-        if token_type == 'FUNCTION':
-            # Functions must be followed by '(' (handled in tokenize)
-            # But we still need to check that they're not used without parentheses
+    # A function name must be immediately followed by '('.
+    for i, (token_type, token_value) in enumerate(tokens):
+        if token_type == 'FUNCTION' and (i + 1 >= len(tokens) or tokens[i + 1][0] != 'LPAREN'):
             raise ValueError(f"'{token_value}' fonksiyonundan sonra '(' gerekir")
-        
-        i += 1
-    
+
+    # Check parenthesis balance up front, so a stray ')' (e.g. ")5 + 3(")
+    # reports the parenthesis error instead of a generic invalid-expression one.
+    depth = 0
+    for token_type, _ in tokens:
+        if token_type == 'LPAREN':
+            depth += 1
+        elif token_type == 'RPAREN':
+            depth -= 1
+            if depth < 0:
+                raise ValueError("Eşleşmeyen parantez")
+    if depth != 0:
+        raise ValueError("Eşleşmeyen parantez")
+
     # Check that operands and operators alternate properly
     for i in range(len(tokens)):
         token_type, token_value = tokens[i]

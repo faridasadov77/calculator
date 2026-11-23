@@ -1,4 +1,5 @@
 """Tests for strict syntax validation in calculator module."""
+import re
 import pytest
 from calculator import evaluate_expression
 
@@ -9,22 +10,22 @@ class TestStrictSyntax:
     def test_functions_without_parentheses(self):
         """Test that functions without parentheses raise appropriate errors."""
         # Functions without parentheses should raise specific error
-        with pytest.raises(ValueError, match="fonksiyonundan sonra '(' gerekir"):
+        with pytest.raises(ValueError, match=re.escape("fonksiyonundan sonra '(' gerekir")):
             evaluate_expression("sqrt 25 + 1")
         
-        with pytest.raises(ValueError, match="fonksiyonundan sonra '(' gerekir"):
+        with pytest.raises(ValueError, match=re.escape("fonksiyonundan sonra '(' gerekir")):
             evaluate_expression("sin pi / 2")
         
-        with pytest.raises(ValueError, match="fonksiyonundan sonra '(' gerekir"):
+        with pytest.raises(ValueError, match=re.escape("fonksiyonundan sonra '(' gerekir")):
             evaluate_expression("cos 0")
         
-        with pytest.raises(ValueError, match="fonksiyonundan sonra '(' gerekir"):
+        with pytest.raises(ValueError, match=re.escape("fonksiyonundan sonra '(' gerekir")):
             evaluate_expression("tan pi")
         
-        with pytest.raises(ValueError, match="fonksiyonundan sonra '(' gerekir"):
+        with pytest.raises(ValueError, match=re.escape("fonksiyonundan sonra '(' gerekir")):
             evaluate_expression("log 100")
         
-        with pytest.raises(ValueError, match="fonksiyonundan sonra '(' gerekir"):
+        with pytest.raises(ValueError, match=re.escape("fonksiyonundan sonra '(' gerekir")):
             evaluate_expression("ln e")
 
     def test_operands_and_operators_not_alternating(self):
@@ -78,10 +79,21 @@ class TestStrictSyntax:
         assert evaluate_expression("5 + -3") == 2.0
         assert evaluate_expression("-5 * -2") == 10.0
 
+    def test_function_name_without_argument(self):
+        """A function name that ends the input or is followed by an operator is rejected."""
+        with pytest.raises(ValueError, match=re.escape("fonksiyonundan sonra '(' gerekir")):
+            evaluate_expression("sqrt")
+
+        with pytest.raises(ValueError, match=re.escape("fonksiyonundan sonra '(' gerekir")):
+            evaluate_expression("2 * sin")
+
+        with pytest.raises(ValueError, match=re.escape("fonksiyonundan sonra '(' gerekir")):
+            evaluate_expression("cos + 1")
+
     def test_mixed_invalid_cases(self):
         """Test mixed invalid cases that should raise errors."""
         # Function without parentheses followed by invalid operator sequence
-        with pytest.raises(ValueError, match="fonksiyonundan sonra '(' gerekir"):
+        with pytest.raises(ValueError, match=re.escape("fonksiyonundan sonra '(' gerekir")):
             evaluate_expression("sqrt 25 3")
         
         # Valid function call followed by invalid sequence
@@ -89,7 +101,7 @@ class TestStrictSyntax:
             evaluate_expression("sqrt(25) 3 +")
         
         # Multiple function calls without parentheses
-        with pytest.raises(ValueError, match="fonksiyonundan sonra '(' gerekir"):
+        with pytest.raises(ValueError, match=re.escape("fonksiyonundan sonra '(' gerekir")):
             evaluate_expression("sqrt 25 sin pi")
 
     def test_edge_cases(self):

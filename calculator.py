@@ -55,8 +55,11 @@ def _checked(value: float) -> float:
     return value
 
 
-def _check_power(a: float, b: float) -> None:
-    """Raise ValueError if a ** b would overflow, be complex, or divide by zero."""
+def _check_power(a: float, b: float) -> float:
+    """Raise ValueError if a ** b would overflow, be complex, or divide by zero.
+    
+    Returns the validated result if successful.
+    """
     try:
         result = a ** b
     except OverflowError:
@@ -65,6 +68,7 @@ def _check_power(a: float, b: float) -> None:
         raise ValueError("Sıfır negatif bir üsse yükseltilemez") from None
     if isinstance(result, complex):
         raise ValueError("Negatif sayının kesirli üssü tanımsızdır")
+    return result
 
 
 def tokenize(expr: str) -> list:
@@ -325,8 +329,7 @@ def evaluate_expression(expr: str) -> float:
                 elif token == '/':
                     stack.append(_checked(calc.divide(a, b)))
                 elif token == '**':
-                    _check_power(a, b)
-                    stack.append(a ** b)
+                    stack.append(_check_power(a, b))
     
     if len(stack) != 1:
         raise ValueError("Geçersiz ifade")

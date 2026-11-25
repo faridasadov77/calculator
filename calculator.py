@@ -212,7 +212,12 @@ def evaluate_expression(expr: str) -> float:
     - Negative numbers
     - Decimals
     - Flexible spacing
-    - Functions must be called with parentheses (e.g., sqrt(25))
+    - Exponentiation with ** (right-associative)
+    - Functions: sqrt, sin, cos, tan, log (base 10), ln.
+      They must be called with parentheses (e.g., sqrt(25)).
+    - Constants: pi, e
+    - Scientific notation: 1e5, 2.5E-3
+    - Unary minus binds tighter than **, so -2 ** 2 == 4 (unlike Python)
     """
     if not expr or not expr.strip():
         raise ValueError("Boş ifade girilemez.")
@@ -334,6 +339,9 @@ def parse_expression(expr: str) -> tuple[float, str, float]:
     
     This maintains the old API for tests that expect a tuple return.
     For full expression evaluation, use evaluate_expression().
+
+    Note: the tuple splits at the first top-level operator, so ``a op b`` does
+    not always equal the full result (e.g. "10 - 5 - 2" gives (10.0, '-', 3.0)).
     """
     # Try to evaluate as full expression first
     result = evaluate_expression(expr)

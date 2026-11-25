@@ -217,7 +217,7 @@ def evaluate_expression(expr: str) -> float:
       They must be called with parentheses (e.g., sqrt(25)).
     - Constants: pi, e
     - Scientific notation: 1e5, 2.5E-3
-    - Unary minus binds tighter than **, so -2 ** 2 == 4 (unlike Python)
+    - Exponentiation binds tighter than unary minus, so -2 ** 2 == -4 (like Python)
     """
     if not expr or not expr.strip():
         raise ValueError("Boş ifade girilemez.")
@@ -231,7 +231,7 @@ def evaluate_expression(expr: str) -> float:
     output = []
     operators = []
     
-    precedence = {'+': 1, '-': 1, '*': 2, '/': 2, '**': 3, 'u-': 4}  # ** has higher precedence than * and /
+    precedence = {'+': 1, '-': 1, '*': 2, '/': 2, 'u-': 3, 'u+': 3, '**': 4}  # ** has highest precedence
     
     for token_type, token_value in tokens:
         if token_type == 'NUMBER':
@@ -242,7 +242,7 @@ def evaluate_expression(expr: str) -> float:
             elif token_value == 'e':
                 output.append(math.e)
         elif token_type == 'UNARY_MINUS':
-            # Unary minus has higher precedence than other operators
+            # Unary minus has lower precedence than ** (standard math convention)
             operators.append('u-')  # Use 'u-' to distinguish from binary '-'
         elif token_type == 'LPAREN':
             operators.append(token_value)

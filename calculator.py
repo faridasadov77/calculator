@@ -239,7 +239,7 @@ def _raise_ln_negative():
 def to_rpn(tokens: list[Token]) -> list:
     """Convert tokens to Reverse Polish Notation using Shunting Yard algorithm."""
     output = []
-    operators = []
+    operators: list[str] = []
     
     precedence = {'+': 1, '-': 1, '*': 2, '/': 2, 'u-': 3, '**': 4}  # ** has highest precedence
     
@@ -255,7 +255,7 @@ def to_rpn(tokens: list[Token]) -> list:
             # Unary minus has lower precedence than ** (standard math convention)
             operators.append('u-')  # Use 'u-' to distinguish from binary '-'
         elif token.type == 'LPAREN':
-            operators.append(token.value)
+            operators.append(str(token.value))
         elif token.type == 'RPAREN':
             while operators and operators[-1] != '(':
                 output.append(operators.pop())
@@ -266,7 +266,7 @@ def to_rpn(tokens: list[Token]) -> list:
             if operators and operators[-1] in FUNCTIONS:
                 output.append(operators.pop())
         elif token.type == 'FUNCTION':
-            operators.append(token.value)
+            operators.append(str(token.value))
         elif token.type == 'OPERATOR':
             # '**' is right-associative: pop only strictly higher precedence.
             # Other operators are left-associative: also pop equal precedence.
@@ -275,7 +275,7 @@ def to_rpn(tokens: list[Token]) -> list:
                     (token.value != '**' and
                      precedence.get(operators[-1], 0) == precedence.get(token.value, 0)))):
                 output.append(operators.pop())
-            operators.append(token.value)
+            operators.append(str(token.value))
     
     while operators:
         if operators[-1] in '()':

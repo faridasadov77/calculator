@@ -48,7 +48,6 @@ def parse_number(s: str) -> float:
     return value
 
 
-
 def _checked(value: float) -> float:
     """Reject results that overflowed to inf (e.g. 10 ** 308 * 10) or became NaN."""
     if not math.isfinite(value):

@@ -10,6 +10,7 @@ class Token:
     type: str
     value: str | float
 
+
 class Calculator:
     """Basic calculator supporting four operations."""
 
@@ -45,6 +46,8 @@ def parse_number(s: str) -> float:
         raise ValueError("Sonsuz değer geçersizdir")
     
     return value
+
+
 
 def _checked(value: float) -> float:
     """Reject results that overflowed to inf (e.g. 10 ** 308 * 10) or became NaN."""

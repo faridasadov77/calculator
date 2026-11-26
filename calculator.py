@@ -9,8 +9,7 @@ from typing import Union
 class Token:
     """Represents a token in the expression."""
     type: str
-    value: Union[str, float]
-
+    value: str | float
 
 class Calculator:
     """Basic calculator supporting four operations."""
@@ -48,17 +47,11 @@ def parse_number(s: str) -> float:
     
     return value
 
-
-
-
-
 def _checked(value: float) -> float:
     """Reject results that overflowed to inf (e.g. 10 ** 308 * 10) or became NaN."""
     if not math.isfinite(value):
         raise ValueError("Sonuç çok büyük (taşma)")
     return value
-
-
 def _check_power(a: float, b: float) -> float:
     """Raise ValueError if a ** b would overflow, be complex, or divide by zero.
     
@@ -73,8 +66,6 @@ def _check_power(a: float, b: float) -> float:
     if isinstance(result, complex):
         raise ValueError("Negatif sayının kesirli üssü tanımsızdır")
     return result
-
-
 def tokenize(expr: str) -> list[Token]:
     """Convert expression string into tokens (numbers, operators, parentheses, functions)."""
     tokens = []
@@ -141,8 +132,6 @@ def tokenize(expr: str) -> list[Token]:
             raise ValueError(f"Geçersiz karakter: '{ch}'")
     
     return tokens
-
-
 def _validate_tokens(tokens: list[Token]) -> None:
     """Validate token sequence to ensure proper alternation between operands and operators.
     
@@ -239,7 +228,6 @@ def _raise_log_negative():
 def _raise_ln_negative():
     raise ValueError("Doğal logaritma sıfır veya negatif için tanımsızdır")
 
-
 def to_rpn(tokens: list[Token]) -> list:
     """Convert tokens to Reverse Polish Notation using Shunting Yard algorithm."""
     output = []
@@ -287,8 +275,6 @@ def to_rpn(tokens: list[Token]) -> list:
         output.append(operators.pop())
     
     return output
-
-
 def eval_rpn(rpn: list) -> float:
     """Evaluate Reverse Polish Notation expression."""
     stack = []
@@ -321,8 +307,6 @@ def eval_rpn(rpn: list) -> float:
         raise ValueError("Geçersiz ifade")
     
     return stack[0]
-
-
 def evaluate_expression(expr: str) -> float:
     """Evaluate a full mathematical expression with operator precedence.
     
@@ -354,10 +338,6 @@ def evaluate_expression(expr: str) -> float:
     
     # Evaluate RPN
     return eval_rpn(rpn)
-
-
-
-
 
 def main():
     print("Hesap Makinesi")

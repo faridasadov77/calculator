@@ -40,12 +40,7 @@ def parse_number(s: str) -> float:
     return value
 
 
-def validate_operator(op: str) -> str:
-    """Validate and return operator."""
-    valid_ops = {'+', '-', '*', '/'}
-    if op not in valid_ops:
-        raise ValueError(f"Geçersiz operatör: '{op}'. Kullan: +, -, *, /")
-    return op
+
 
 
 def _checked(value: float) -> float:
@@ -337,45 +332,7 @@ def evaluate_expression(expr: str) -> float:
     return stack[0]
 
 
-def parse_expression(expr: str) -> tuple[float, str, float]:
-    """Parse and validate a simple binary expression (for backward compatibility).
-    
-    This maintains the old API for tests that expect a tuple return.
-    For full expression evaluation, use evaluate_expression().
 
-    Note: the tuple splits at the first top-level operator, so ``a op b`` does
-    not always equal the full result (e.g. "10 - 5 - 2" gives (10.0, '-', 3.0)).
-    """
-    # Try to evaluate as full expression first
-    result = evaluate_expression(expr)
-    
-    # For backward compatibility, we still need to return a tuple
-    # This is a simplified parse - just find the first top-level operator
-    tokens = tokenize(expr)
-    
-    # Find first operator at depth 0 (not inside parentheses)
-    depth = 0
-    for i, (token_type, token_value) in enumerate(tokens):
-        if token_type == 'LPAREN':
-            depth += 1
-        elif token_type == 'RPAREN':
-            depth -= 1
-        elif token_type == 'OPERATOR' and depth == 0 and token_value in '+-*/':
-            # Found top-level operator
-            left_tokens = tokens[:i]
-            right_tokens = tokens[i+1:]
-            
-            # Evaluate left and right sides
-            left_expr = ' '.join(str(v) if t == 'NUMBER' else v for t, v in left_tokens)
-            right_expr = ' '.join(str(v) if t == 'NUMBER' else v for t, v in right_tokens)
-            
-            a = evaluate_expression(left_expr) if left_expr else 0
-            b = evaluate_expression(right_expr) if right_expr else 0
-            
-            return a, token_value, b
-    
-    # Fallback: single number
-    return result, '+', 0
 
 
 def main():

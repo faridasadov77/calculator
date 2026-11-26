@@ -2,7 +2,7 @@
 import math
 
 import pytest
-from calculator import Calculator, parse_number, validate_operator, parse_expression, evaluate_expression
+from calculator import Calculator, parse_number, evaluate_expression
 
 
 class TestCalculator:
@@ -90,113 +90,10 @@ class TestParseNumber:
             parse_number("infinity")
 
 
-class TestValidateOperator:
-    """Test cases for validate_operator function."""
-
-    def test_valid_operators(self):
-        assert validate_operator("+") == "+"
-        assert validate_operator("-") == "-"
-        assert validate_operator("*") == "*"
-        assert validate_operator("/") == "/"
-
-    def test_invalid_operators(self):
-        with pytest.raises(ValueError, match="Geçersiz operatör"):
-            validate_operator("%")
-        with pytest.raises(ValueError, match="Geçersiz operatör"):
-            validate_operator("^")
-        with pytest.raises(ValueError, match="Geçersiz operatör"):
-            validate_operator("x")
-        with pytest.raises(ValueError, match="Geçersiz operatör"):
-            validate_operator("")
 
 
-class TestParseExpression:
-    """Test cases for parse_expression function (backward compatibility)."""
 
-    def test_valid_expressions(self):
-        # Space-separated (original format)
-        assert parse_expression("5 + 3") == (5.0, "+", 3.0)
-        assert parse_expression("10 - 4") == (10.0, "-", 4.0)
-        assert parse_expression("6 * 7") == (6.0, "*", 7.0)
-        assert parse_expression("20 / 4") == (20.0, "/", 4.0)
-        assert parse_expression("  2.5  +  1.5  ") == (2.5, "+", 1.5)
-        assert parse_expression("-5 * -2") == (-5.0, "*", -2.0)
-        
-        # No spaces
-        assert parse_expression("5+3") == (5.0, "+", 3.0)
-        assert parse_expression("10-4") == (10.0, "-", 4.0)
-        assert parse_expression("6*7") == (6.0, "*", 7.0)
-        assert parse_expression("20/4") == (20.0, "/", 4.0)
-        
-        # Partial spaces
-        assert parse_expression("5 +3") == (5.0, "+", 3.0)
-        assert parse_expression("5+ 3") == (5.0, "+", 3.0)
-        assert parse_expression("10 -4") == (10.0, "-", 4.0)
-        assert parse_expression("10- 4") == (10.0, "-", 4.0)
-        
-        # Negative numbers with various formats
-        assert parse_expression("-5+3") == (-5.0, "+", 3.0)
-        assert parse_expression("5+-3") == (5.0, "+", -3.0)
-        assert parse_expression("-5+-3") == (-5.0, "+", -3.0)
-        assert parse_expression("5.5*-2.3") == (5.5, "*", -2.3)
-        assert parse_expression("-10/-2") == (-10.0, "/", -2.0)
 
-    def test_empty_expression(self):
-        with pytest.raises(ValueError, match="Boş ifade"):
-            parse_expression("")
-        with pytest.raises(ValueError, match="Boş ifade"):
-            parse_expression("   ")
-
-    def test_invalid_format(self):
-        # A lone number has no operator: the legacy fallback returns (value, '+', 0)
-        assert parse_expression("5") == (5.0, "+", 0)
-        with pytest.raises(ValueError, match="Geçersiz ifade"):
-            parse_expression("5+")
-        with pytest.raises(ValueError, match="Geçersiz ifade"):
-            parse_expression("+3")
-        with pytest.raises(ValueError, match="Geçersiz ifade"):
-            parse_expression("5 3")
-
-    def test_invalid_number_in_expression(self):
-        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
-            parse_expression("abc + 3")
-        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
-            parse_expression("5 + xyz")
-        with pytest.raises(ValueError, match="Geçersiz sayı formatı"):
-            parse_expression("5.2.3 + 1")
-
-    def test_invalid_operator_in_expression(self):
-        with pytest.raises(ValueError, match="Geçersiz karakter"):
-            parse_expression("5 % 3")
-        with pytest.raises(ValueError, match="Geçersiz karakter"):
-            parse_expression("5 ^ 3")
-        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
-            parse_expression("5 x 3")
-
-    def test_nan_in_expression(self):
-        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
-            parse_expression("nan + 3")
-
-    def test_infinity_in_expression(self):
-        with pytest.raises(ValueError, match="Bilinmeyen fonksiyon veya sabit"):
-            parse_expression("inf + 3")
-
-    def test_small_numbers_round_trip(self):
-        # str(1e-05) == '1e-05' must survive being re-tokenized
-        assert parse_expression("0.00001 + 1") == (1e-05, "+", 1.0)
-
-    def test_multiple_operators_first_top_level(self):
-        # parse_expression returns first top-level operator for backward compatibility
-        # but the full expression is evaluated correctly by evaluate_expression
-        a, op, b = parse_expression("5+3-2")
-        assert op == "+"
-        assert a == 5.0
-        assert b == 1.0  # right side "3-2" is evaluated fully
-        
-        a, op, b = parse_expression("10-5*2")
-        assert op == "-"
-        assert a == 10.0
-        assert b == 10.0  # right side "5*2" is evaluated fully
 
 
 class TestEvaluateExpression:

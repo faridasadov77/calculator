@@ -2,7 +2,6 @@
 
 import math
 from dataclasses import dataclass
-from typing import Union
 
 
 @dataclass
@@ -52,6 +51,8 @@ def _checked(value: float) -> float:
     if not math.isfinite(value):
         raise ValueError("Sonuç çok büyük (taşma)")
     return value
+
+
 def _check_power(a: float, b: float) -> float:
     """Raise ValueError if a ** b would overflow, be complex, or divide by zero.
     
@@ -132,6 +133,8 @@ def tokenize(expr: str) -> list[Token]:
             raise ValueError(f"Geçersiz karakter: '{ch}'")
     
     return tokens
+
+
 def _validate_tokens(tokens: list[Token]) -> None:
     """Validate token sequence to ensure proper alternation between operands and operators.
     

@@ -2,7 +2,7 @@
 import math
 
 import pytest
-from calculator import Calculator, parse_number, evaluate_expression
+from calculator import Calculator, parse_number, evaluate_expression, Token
 
 
 class TestCalculator:

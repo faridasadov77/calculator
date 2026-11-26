@@ -1,6 +1,15 @@
 """Simple calculator implementation."""
 
 import math
+from dataclasses import dataclass
+from typing import Union
+
+
+@dataclass
+class Token:
+    """Represents a token in the expression."""
+    type: str
+    value: Union[str, float]
 
 
 class Calculator:
@@ -66,7 +75,7 @@ def _check_power(a: float, b: float) -> float:
     return result
 
 
-def tokenize(expr: str) -> list:
+def tokenize(expr: str) -> list[Token]:
     """Convert expression string into tokens (numbers, operators, parentheses, functions)."""
     tokens = []
     i = 0
@@ -81,22 +90,22 @@ def tokenize(expr: str) -> list:
         
         if ch == '*' and i + 1 < len(expr) and expr[i + 1] == '*':
             # Exponentiation operator ** (must be checked before single-char operators)
-            tokens.append(('OPERATOR', '**'))
+            tokens.append(Token('OPERATOR', '**'))
             i += 2
         elif ch in '+-*/()':
             # Handle unary minus (negative numbers)
             # Unary minus occurs after: start of expression, an operator, opening parenthesis, or another unary minus
-            if ch == '-' and (i == 0 or not tokens or tokens[-1][0] in ['OPERATOR', 'LPAREN', 'UNARY_MINUS']):
+            if ch == '-' and (i == 0 or not tokens or tokens[-1].type in ['OPERATOR', 'LPAREN', 'UNARY_MINUS']):
                 # This is a unary minus
-                tokens.append(('UNARY_MINUS', ch))
+                tokens.append(Token('UNARY_MINUS', ch))
                 i += 1
             else:
                 if ch == '(':
-                    tokens.append(('LPAREN', ch))
+                    tokens.append(Token('LPAREN', ch))
                 elif ch == ')':
-                    tokens.append(('RPAREN', ch))
+                    tokens.append(Token('RPAREN', ch))
                 else:
-                    tokens.append(('OPERATOR', ch))
+                    tokens.append(Token('OPERATOR', ch))
                 i += 1
         elif ch.isdigit() or ch == '.':
             j = i
@@ -113,7 +122,7 @@ def tokenize(expr: str) -> list:
                         k += 1
                     j = k
             num_str = expr[i:j]
-            tokens.append(('NUMBER', parse_number(num_str)))
+            tokens.append(Token('NUMBER', parse_number(num_str)))
             i = j
         elif ch.isalpha():
             # Functions and constants
@@ -122,9 +131,9 @@ def tokenize(expr: str) -> list:
                 j += 1
             word = expr[i:j].lower()
             if word in ('sqrt', 'sin', 'cos', 'tan', 'log', 'ln'):
-                tokens.append(('FUNCTION', word))
+                tokens.append(Token('FUNCTION', word))
             elif word in ('pi', 'e'):
-                tokens.append(('CONSTANT', word))
+                tokens.append(Token('CONSTANT', word))
             else:
                 raise ValueError(f"Bilinmeyen fonksiyon veya sabit: '{word}'")
             i = j
@@ -134,24 +143,24 @@ def tokenize(expr: str) -> list:
     return tokens
 
 
-def _validate_tokens(tokens: list) -> None:
+def _validate_tokens(tokens: list[Token]) -> None:
     """Validate token sequence to ensure proper alternation between operands and operators.
     
     Functions must be called with parentheses (e.g., sqrt(25) not sqrt 25).
     Operands and operators must alternate properly.
     """
     # A function name must be immediately followed by '('.
-    for i, (token_type, token_value) in enumerate(tokens):
-        if token_type == 'FUNCTION' and (i + 1 >= len(tokens) or tokens[i + 1][0] != 'LPAREN'):
-            raise ValueError(f"'{token_value}' fonksiyonundan sonra '(' gerekir")
+    for i, token in enumerate(tokens):
+        if token.type == 'FUNCTION' and (i + 1 >= len(tokens) or tokens[i + 1].type != 'LPAREN'):
+            raise ValueError(f"'{token.value}' fonksiyonundan sonra '(' gerekir")
 
     # Check parenthesis balance up front, so a stray ')' (e.g. ")5 + 3(")
     # reports the parenthesis error instead of a generic invalid-expression one.
     depth = 0
-    for token_type, _ in tokens:
-        if token_type == 'LPAREN':
+    for token in tokens:
+        if token.type == 'LPAREN':
             depth += 1
-        elif token_type == 'RPAREN':
+        elif token.type == 'RPAREN':
             depth -= 1
             if depth < 0:
                 raise ValueError("Eşleşmeyen parantez")
@@ -160,44 +169,158 @@ def _validate_tokens(tokens: list) -> None:
 
     # Check that operands and operators alternate properly
     for i in range(len(tokens)):
-        token_type, token_value = tokens[i]
+        token = tokens[i]
         
         if i == 0:
             # First token can be: NUMBER, CONSTANT, UNARY_MINUS, LPAREN, FUNCTION
-            if token_type not in ['NUMBER', 'CONSTANT', 'UNARY_MINUS', 'LPAREN', 'FUNCTION']:
+            if token.type not in ['NUMBER', 'CONSTANT', 'UNARY_MINUS', 'LPAREN', 'FUNCTION']:
                 raise ValueError("Geçersiz ifade")
         else:
-            prev_type, prev_value = tokens[i-1]
+            prev_token = tokens[i-1]
             
             # Current token can be: NUMBER, CONSTANT, UNARY_MINUS, LPAREN, FUNCTION, OPERATOR, RPAREN
-            if token_type == 'NUMBER':
+            if token.type == 'NUMBER':
                 # Previous must be: OPERATOR, LPAREN, UNARY_MINUS
-                if prev_type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS']:
+                if prev_token.type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS']:
                     raise ValueError("Geçersiz ifade")
-            elif token_type == 'CONSTANT':
+            elif token.type == 'CONSTANT':
                 # Previous must be: OPERATOR, LPAREN, UNARY_MINUS
-                if prev_type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS']:
+                if prev_token.type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS']:
                     raise ValueError("Geçersiz ifade")
-            elif token_type == 'UNARY_MINUS':
+            elif token.type == 'UNARY_MINUS':
                 # Previous must be: OPERATOR, LPAREN, UNARY_MINUS, or start
-                if prev_type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS'] and i > 0:
+                if prev_token.type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS'] and i > 0:
                     raise ValueError("Geçersiz ifade")
-            elif token_type == 'LPAREN':
+            elif token.type == 'LPAREN':
                 # Previous must be: OPERATOR, LPAREN, UNARY_MINUS, FUNCTION
-                if prev_type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS', 'FUNCTION']:
+                if prev_token.type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS', 'FUNCTION']:
                     raise ValueError("Geçersiz ifade")
-            elif token_type == 'FUNCTION':
+            elif token.type == 'FUNCTION':
                 # Previous must be: OPERATOR, LPAREN, UNARY_MINUS
-                if prev_type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS']:
+                if prev_token.type not in ['OPERATOR', 'LPAREN', 'UNARY_MINUS']:
                     raise ValueError("Geçersiz ifade")
-            elif token_type == 'OPERATOR':
+            elif token.type == 'OPERATOR':
                 # Previous must be: NUMBER, CONSTANT, RPAREN
-                if prev_type not in ['NUMBER', 'CONSTANT', 'RPAREN']:
+                if prev_token.type not in ['NUMBER', 'CONSTANT', 'RPAREN']:
                     raise ValueError("Geçersiz ifade")
-            elif token_type == 'RPAREN':
+            elif token.type == 'RPAREN':
                 # Previous must be: NUMBER, CONSTANT, RPAREN
-                if prev_type not in ['NUMBER', 'CONSTANT', 'RPAREN']:
+                if prev_token.type not in ['NUMBER', 'CONSTANT', 'RPAREN']:
                     raise ValueError("Geçersiz ifade")
+
+
+# Operator and function dispatch dictionaries
+OPERATORS = {
+    '+': lambda a, b: _checked(Calculator().add(a, b)),
+    '-': lambda a, b: _checked(Calculator().subtract(a, b)),
+    '*': lambda a, b: _checked(Calculator().multiply(a, b)),
+    '/': lambda a, b: _checked(Calculator().divide(a, b)),
+    '**': lambda a, b: _check_power(a, b)
+}
+
+FUNCTIONS = {
+    'sqrt': lambda a: math.sqrt(a) if a >= 0 else _raise_sqrt_negative(),
+    'sin': lambda a: math.sin(a),
+    'cos': lambda a: math.cos(a),
+    'tan': lambda a: math.tan(a),
+    'log': lambda a: math.log10(a) if a > 0 else _raise_log_negative(),
+    'ln': lambda a: math.log(a) if a > 0 else _raise_ln_negative()
+}
+
+
+def _raise_sqrt_negative():
+    raise ValueError("Karekök negatif sayı için tanımsızdır")
+
+
+def _raise_log_negative():
+    raise ValueError("Logaritma sıfır veya negatif için tanımsızdır")
+
+
+def _raise_ln_negative():
+    raise ValueError("Doğal logaritma sıfır veya negatif için tanımsızdır")
+
+
+def to_rpn(tokens: list[Token]) -> list:
+    """Convert tokens to Reverse Polish Notation using Shunting Yard algorithm."""
+    output = []
+    operators = []
+    
+    precedence = {'+': 1, '-': 1, '*': 2, '/': 2, 'u-': 3, '**': 4}  # ** has highest precedence
+    
+    for token in tokens:
+        if token.type == 'NUMBER':
+            output.append(token.value)
+        elif token.type == 'CONSTANT':
+            if token.value == 'pi':
+                output.append(math.pi)
+            elif token.value == 'e':
+                output.append(math.e)
+        elif token.type == 'UNARY_MINUS':
+            # Unary minus has lower precedence than ** (standard math convention)
+            operators.append('u-')  # Use 'u-' to distinguish from binary '-'
+        elif token.type == 'LPAREN':
+            operators.append(token.value)
+        elif token.type == 'RPAREN':
+            while operators and operators[-1] != '(':
+                output.append(operators.pop())
+            if not operators:
+                raise ValueError("Eşleşmeyen parantez")
+            operators.pop()  # Remove '('
+            # If there's a function on the stack, apply it
+            if operators and operators[-1] in FUNCTIONS:
+                output.append(operators.pop())
+        elif token.type == 'FUNCTION':
+            operators.append(token.value)
+        elif token.type == 'OPERATOR':
+            # '**' is right-associative: pop only strictly higher precedence.
+            # Other operators are left-associative: also pop equal precedence.
+            while (operators and operators[-1] != '(' and
+                   (precedence.get(operators[-1], 0) > precedence.get(token.value, 0) or
+                    (token.value != '**' and
+                     precedence.get(operators[-1], 0) == precedence.get(token.value, 0)))):
+                output.append(operators.pop())
+            operators.append(token.value)
+    
+    while operators:
+        if operators[-1] in '()':
+            raise ValueError("Eşleşmeyen parantez")
+        output.append(operators.pop())
+    
+    return output
+
+
+def eval_rpn(rpn: list) -> float:
+    """Evaluate Reverse Polish Notation expression."""
+    stack = []
+    
+    for token in rpn:
+        if isinstance(token, float):
+            stack.append(token)
+        else:
+            if token == 'u-':
+                # Unary minus - only one operand needed
+                if len(stack) < 1:
+                    raise ValueError("Geçersiz ifade")
+                a = stack.pop()
+                stack.append(-a)
+            elif token in FUNCTIONS:
+                # Functions - one operand
+                if len(stack) < 1:
+                    raise ValueError("Geçersiz ifade")
+                a = stack.pop()
+                stack.append(FUNCTIONS[token](a))
+            else:
+                # Binary operators - need two operands
+                if len(stack) < 2:
+                    raise ValueError("Geçersiz ifade")
+                b = stack.pop()
+                a = stack.pop()
+                stack.append(OPERATORS[token](a, b))
+    
+    if len(stack) != 1:
+        raise ValueError("Geçersiz ifade")
+    
+    return stack[0]
 
 
 def evaluate_expression(expr: str) -> float:
@@ -226,110 +349,11 @@ def evaluate_expression(expr: str) -> float:
     # Validate token sequence for strict syntax
     _validate_tokens(tokens)
     
-    # Shunting Yard algorithm to convert to RPN
-    output = []
-    operators = []
-    
-    precedence = {'+': 1, '-': 1, '*': 2, '/': 2, 'u-': 3, 'u+': 3, '**': 4}  # ** has highest precedence
-    
-    for token_type, token_value in tokens:
-        if token_type == 'NUMBER':
-            output.append(token_value)
-        elif token_type == 'CONSTANT':
-            if token_value == 'pi':
-                output.append(math.pi)
-            elif token_value == 'e':
-                output.append(math.e)
-        elif token_type == 'UNARY_MINUS':
-            # Unary minus has lower precedence than ** (standard math convention)
-            operators.append('u-')  # Use 'u-' to distinguish from binary '-'
-        elif token_type == 'LPAREN':
-            operators.append(token_value)
-        elif token_type == 'RPAREN':
-            while operators and operators[-1] != '(':
-                output.append(operators.pop())
-            if not operators:
-                raise ValueError("Eşleşmeyen parantez")
-            operators.pop()  # Remove '('
-            # If there's a function on the stack, apply it
-            if operators and operators[-1] in ('sqrt', 'sin', 'cos', 'tan', 'log', 'ln'):
-                output.append(operators.pop())
-        elif token_type == 'FUNCTION':
-            operators.append(token_value)
-        elif token_type == 'OPERATOR':
-            # '**' is right-associative: pop only strictly higher precedence.
-            # Other operators are left-associative: also pop equal precedence.
-            while (operators and operators[-1] != '(' and
-                   (precedence.get(operators[-1], 0) > precedence.get(token_value, 0) or
-                    (token_value != '**' and
-                     precedence.get(operators[-1], 0) == precedence.get(token_value, 0)))):
-                output.append(operators.pop())
-            operators.append(token_value)
-    
-    while operators:
-        if operators[-1] in '()':
-            raise ValueError("Eşleşmeyen parantez")
-        output.append(operators.pop())
+    # Convert to RPN
+    rpn = to_rpn(tokens)
     
     # Evaluate RPN
-    stack = []
-    calc = Calculator()
-    
-    for token in output:
-        if isinstance(token, float):
-            stack.append(token)
-        else:
-            if token == 'u-':
-                # Unary minus - only one operand needed
-                if len(stack) < 1:
-                    raise ValueError("Geçersiz ifade")
-                a = stack.pop()
-                stack.append(-a)
-            elif token in ('sqrt', 'sin', 'cos', 'tan', 'log', 'ln'):
-                # Functions - one operand
-                if len(stack) < 1:
-                    raise ValueError("Geçersiz ifade")
-                a = stack.pop()
-                if token == 'sqrt':
-                    if a < 0:
-                        raise ValueError("Karekök negatif sayı için tanımsızdır")
-                    stack.append(math.sqrt(a))
-                elif token == 'sin':
-                    stack.append(math.sin(a))
-                elif token == 'cos':
-                    stack.append(math.cos(a))
-                elif token == 'tan':
-                    stack.append(math.tan(a))
-                elif token == 'log':
-                    if a <= 0:
-                        raise ValueError("Logaritma sıfır veya negatif için tanımsızdır")
-                    stack.append(math.log10(a))
-                elif token == 'ln':
-                    if a <= 0:
-                        raise ValueError("Doğal logaritma sıfır veya negatif için tanımsızdır")
-                    stack.append(math.log(a))
-            else:
-                # Binary operators - need two operands
-                if len(stack) < 2:
-                    raise ValueError("Geçersiz ifade")
-                b = stack.pop()
-                a = stack.pop()
-                
-                if token == '+':
-                    stack.append(_checked(calc.add(a, b)))
-                elif token == '-':
-                    stack.append(_checked(calc.subtract(a, b)))
-                elif token == '*':
-                    stack.append(_checked(calc.multiply(a, b)))
-                elif token == '/':
-                    stack.append(_checked(calc.divide(a, b)))
-                elif token == '**':
-                    stack.append(_check_power(a, b))
-    
-    if len(stack) != 1:
-        raise ValueError("Geçersiz ifade")
-    
-    return stack[0]
+    return eval_rpn(rpn)
 
 
 
